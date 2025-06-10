@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.Python
+.env
+.env.*
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# VSCode settings
+.vscode/
+
+# Jupyter/IPython
+.ipynb_checkpoints/
+
+# Logs and system files
+*.log
+.DS_Store
+Thumbs.db
+
+# Test/cache
+.cache/
+pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+# MongoDB dump (optional)
+dump/
