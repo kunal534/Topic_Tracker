@@ -8,7 +8,6 @@ A backend-powered tool that tracks any topic across Reddit, YouTube, and Google 
 
 ## 📸 Demo
 
-![UI Screenshot](https://raw.githubusercontent.com/kunal534/Topic_Tracker/v1-mvp-working/assets/demo.png)  
 > Web UI to create & monitor tracked topics in real time.
 
 ---
