@@ -39,3 +39,7 @@ build/
 
 # MongoDB dump (optional)
 dump/
+
+
+# env
+.env
