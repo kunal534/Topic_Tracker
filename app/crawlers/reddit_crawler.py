@@ -1,24 +1,27 @@
+"""Reddit source provider."""
+
+from typing import Any
+
 import praw
-import os
-from dotenv import load_dotenv
-from app.db.mongodb import save_reddit_data
 
-load_dotenv()
+from app.config import settings
 
-reddit = praw.Reddit(
-    client_id=os.getenv("REDDIT_CLIENT_ID"),
-    client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
-    user_agent="insight-tracker-bot"
-)
 
-def fetch_reddit_posts(topic: str, limit=5):
+def fetch_reddit_posts(topic: str, limit: int = 5) -> list[dict[str, Any]]:
+    if not settings.reddit_client_id or not settings.reddit_client_secret:
+        raise RuntimeError("Reddit credentials are not configured")
+    reddit = praw.Reddit(
+        client_id=settings.reddit_client_id,
+        client_secret=settings.reddit_client_secret,
+        user_agent="topic-tracker/1.0",
+    )
     posts = []
-    for submission in reddit.subreddit("all").search(topic, sort='new', limit=limit):
+    for submission in reddit.subreddit("all").search(topic, sort="new", limit=limit):
         posts.append({
+            "external_id": submission.id,
             "title": submission.title,
             "url": submission.url,
             "created_utc": submission.created_utc,
-            "subreddit": submission.subreddit.display_name
+            "subreddit": submission.subreddit.display_name,
         })
-    save_reddit_data(topic, posts)
     return posts

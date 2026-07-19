@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "scripts": {
+    "watch:build": "cd web && npm run watch:build",
+    "web:install": "cd web && npm install"
+  }
+}

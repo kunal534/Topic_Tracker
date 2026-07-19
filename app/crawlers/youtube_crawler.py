@@ -1,97 +1,56 @@
-from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api.formatters import TextFormatter
+"""YouTube source provider backed by RapidAPI."""
+
+from typing import Any
+
 import requests
-import re
-import os
-import requests
-from app.db.mongodb import save_video_insight
-from app.db.mongodb import db
-from datetime import datetime
 
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
+from app.config import settings
 
-def fetch_transcripts(query):
-    url_search = "https://youtube138.p.rapidapi.com/search/"
-    headers = {
-        "x-rapidapi-host": "youtube138.p.rapidapi.com",
-        "x-rapidapi-key": os.getenv("RAPIDAPI_KEY")
-    }
-    params = {"q": query, "hl": "en", "gl": "US"}
-    response = requests.get(url_search, headers=headers, params=params)
-    data = response.json()
-    video_ids = []
+REQUEST_TIMEOUT_SECONDS = 15
 
-    for item in data.get("contents", []):
-        video = item.get("video")
-        if video:
-            video_ids.append(video.get("videoId"))
 
-    print(f"Extracted video IDs via RapidAPI for '{query}':", video_ids)
+def _headers(host: str) -> dict[str, str]:
+    if not settings.rapidapi_key:
+        raise RuntimeError("RAPIDAPI_KEY is not configured")
+    return {"x-rapidapi-host": host, "x-rapidapi-key": settings.rapidapi_key}
 
+
+def _get(url: str, host: str, **kwargs: Any) -> dict[str, Any]:
+    response = requests.get(url, headers=_headers(host), timeout=REQUEST_TIMEOUT_SECONDS, **kwargs)
+    response.raise_for_status()
+    return response.json()
+
+
+def fetch_transcripts(query: str, limit: int = 5) -> list[dict[str, Any]]:
+    search = _get(
+        "https://youtube138.p.rapidapi.com/search/",
+        "youtube138.p.rapidapi.com",
+        params={"q": query, "hl": "en", "gl": "US"},
+    )
+    video_ids = [item["video"]["videoId"] for item in search.get("contents", []) if item.get("video", {}).get("videoId")]
     insights = []
-
-    for vid in video_ids[:5]:
-        print(f"Processing video ID: {vid}")
-        try:
-            subtitles_resp = requests.get(
-                f"https://youtube-v2.p.rapidapi.com/video/subtitles?video_id={vid}",
-                headers={
-                    "x-rapidapi-host": "youtube-v2.p.rapidapi.com",
-                    "x-rapidapi-key": os.getenv("RAPIDAPI_KEY")
-                }
-            )
-            subtitles = subtitles_resp.json().get("subtitles", [])
-
-            details_resp = requests.get(
-                f"https://youtube-v2.p.rapidapi.com/video/details?video_id={vid}",
-                headers={
-                    "x-rapidapi-host": "youtube-v2.p.rapidapi.com",
-                    "x-rapidapi-key": os.getenv("RAPIDAPI_KEY")
-                }
-            )
-            details = details_resp.json()
-
-            comments_resp = requests.get(
-                f"https://youtube-v2.p.rapidapi.com/video/comments?video_id={vid}",
-                headers={
-                    "x-rapidapi-host": "youtube-v2.p.rapidapi.com",
-                    "x-rapidapi-key": os.getenv("RAPIDAPI_KEY")
-                }
-            )
-            comments = comments_resp.json().get("comments", [])
-            top_comments = [c.get("text", "") for c in comments[:3]]
-
-            insight = {
-                "video_id": vid,
-                "title": details.get("title", ""),
-                "channel": details.get("author", ""),
-                "subtitles": subtitles,
-                "top_comments": top_comments,
-                "summary": None,
-                "topic": query
-            }
-
-            insights.append(insight)
-
-        except Exception as e:
-            print(f"[ERROR] Failed to fetch data for video {vid}: {e}")
-            continue
-
-    save_raw_youtube_data(query, insights)
-    return insights
-
-def save_raw_youtube_data(topic, insights):
-    youtube_collection = db.youtube_videos
-    for insight in insights:
-        youtube_collection.insert_one({
-            "topic": topic,
-            "source": "youtube",
-            "video_id": insight["video_id"],
-            "title": insight["title"],
-            "channel": insight["channel"],
-            "subtitles": insight["subtitles"],
-            "top_comments": insight["top_comments"],
-            "summary": None,
-            "created_at": datetime.utcnow()
+    for video_id in video_ids[:limit]:
+        details = _get(
+            "https://youtube-v2.p.rapidapi.com/video/details",
+            "youtube-v2.p.rapidapi.com",
+            params={"video_id": video_id},
+        )
+        subtitles = _get(
+            "https://youtube-v2.p.rapidapi.com/video/subtitles",
+            "youtube-v2.p.rapidapi.com",
+            params={"video_id": video_id},
+        ).get("subtitles", [])
+        comments = _get(
+            "https://youtube-v2.p.rapidapi.com/video/comments",
+            "youtube-v2.p.rapidapi.com",
+            params={"video_id": video_id},
+        ).get("comments", [])
+        insights.append({
+            "external_id": video_id,
+            "title": details.get("title", ""),
+            "channel": details.get("author", ""),
+            "url": f"https://www.youtube.com/watch?v={video_id}",
+            "subtitles": subtitles,
+            "top_comments": [comment.get("text", "") for comment in comments[:3]],
         })
+    return insights

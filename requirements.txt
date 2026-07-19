@@ -1,0 +1,15 @@
+celery>=5.4,<6
+fastapi>=0.115,<1
+openai>=1.50,<2
+praw>=7.7,<8
+pymongo>=4.10,<5
+PyJWT>=2.10,<3
+pwdlib[argon2]>=0.2,<1
+python-dotenv>=1.0,<2
+requests>=2.32,<3
+pytest>=8.3,<9
+redis>=5,<6
+strawberry-graphql[fastapi]>=0.252,<1
+tiktoken>=0.8,<1
+uvicorn[standard]>=0.32,<1
+youtube-transcript-api>=0.6,<2

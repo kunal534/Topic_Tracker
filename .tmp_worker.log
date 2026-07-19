@@ -1,0 +1,31 @@
+ 
+ -------------- celery@Kunal-MacBook.local v5.6.3 (recovery)
+--- ***** ----- 
+-- ******* ---- macOS-26.5.2-arm64-arm-64bit-Mach-O 2026-07-19 19:04:54
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         topic_tracker:0x10aaf1160
+- ** ---------- .> transport:   redis://localhost:6379/0
+- ** ---------- .> results:     redis://localhost:6379/0
+- *** --- * --- .> concurrency: 8 (solo)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> collection       exchange=collection(direct) key=collection
+                
+
+[tasks]
+  . app.tasks.dispatch_due_topics
+  . app.tasks.monitor_topic
+
+[2026-07-19 19:04:54,906: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-07-19 19:04:54,916: INFO/MainProcess] mingle: searching for neighbors
+[2026-07-19 19:04:55,939: INFO/MainProcess] mingle: all alone
+[2026-07-19 19:04:55,962: INFO/MainProcess] celery@Kunal-MacBook.local ready.
+
+SIGHUP not supported: Restarting with SIGHUP is unstable on this platform!
+
+SIGHUP not supported: Restarting with SIGHUP is unstable on this platform!
+[2026-07-19 19:16:16,163: INFO/MainProcess] Task app.tasks.monitor_topic[1514667d-92c5-4e3f-8c00-eef48b3469e9] received
+[2026-07-19 19:16:16,427: WARNING/MainProcess] Version 7.8.2 of praw is outdated. Version 8.0.2 was released Wednesday June 24, 2026.
+[2026-07-19 19:16:22,040: INFO/MainProcess] Task app.tasks.monitor_topic[1514667d-92c5-4e3f-8c00-eef48b3469e9] succeeded in 5.840156000020215s: {'fetched': 5, 'new': 5, 'updates': 1}

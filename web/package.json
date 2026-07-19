@@ -1,0 +1,38 @@
+{
+  "name": "topic-tracker-web",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "start": "craco start",
+    "build": "craco build",
+    "watch:build": "craco start"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.13.8",
+    "graphql": "^16.11.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-scripts": "^5.0.1"
+  },
+  "devDependencies": {
+    "@craco/craco": "^7.1.0",
+    "@types/node": "^20.11.24",
+    "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.1.9",
+    "ajv": "^8.20.0",
+    "react-refresh": "^0.18.0",
+    "typescript": "^5.9.2"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

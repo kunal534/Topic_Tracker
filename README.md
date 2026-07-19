@@ -1,115 +1,148 @@
 # Topic Tracker
 
-A backend system that periodically fetches and summarizes topic-related content from Reddit and YouTube.
+Topic Tracker is a proactive topic-monitoring platform that finds new coverage for user-defined topics, deduplicates it, creates explainable updates, and exposes the timeline through a GraphQL API backed by a React Apollo client.
 
----
+## How it works
 
-## ✅ Features Implemented
+- Users create or subscribe to topics they want to follow.
+- Topics and subscriptions are stored in MongoDB.
+- Celery workers collect new content from external providers such as Reddit and YouTube.
+- The backend normalizes, deduplicates, and stores topic updates and in-app notifications.
+- The GraphQL API serves completed updates and notification state without making users wait for crawling or processing.
+- The web client displays topic timelines, subscription state, and recent notifications.
 
-### 🔍 Topic Data Collection
+## Architecture
 
-* **Reddit**:
+```text
+web/ React + Apollo Client
+          ↓
+      GraphQL API (FastAPI + Strawberry)
+          ↓
+        MongoDB
 
-  * Fetches top post titles related to a given topic.
-* **YouTube**:
-
-  * Uses RapidAPI (youtube138, youtube-v2) to fetch video metadata, subtitles, and top comments.
-  * Stores `video_id`, `title`, `channel`, `subtitles`, and `top_comments`.
-
-### 🧠 Summarization
-
-* **Reddit**:
-
-  * Summarized using OpenAI GPT-4 (via OpenRouter).
-  * Chunked input handled manually using `tiktoken`.
-
-* **YouTube**:
-
-  * Uses `youtube-video-summarizer-gpt-ai` via RapidAPI to save OpenAI credits.
-
-### 🗃️ MongoDB Storage
-
-* Collections: `reddit_posts`, `youtube_videos`
-* Fields: `topic`, `source`, `video_id`, `subtitles`, `top_comments`, `summary`, `created_at`, `summarized_at`
-
-### ⚙️ Celery Tasks
-
-* `fetch_topic_data(topic)`:
-
-  * Fetches and stores raw Reddit and YouTube content for a given topic.
-* `summarize_topic_data(topic)`:
-
-  * Reddit content summarized using OpenAI.
-  * YouTube content summarized using RapidAPI.
-
----
-
-## 🔄 Switching Summarization Source
-
-* OpenAI used only for Reddit (due to token cost).
-* YouTube switched to `youtube-video-summarizer-gpt-ai` (RapidAPI).
-
----
-
-## 🐞 Latest Issue
-
-### May 24, 2025
-
-```plaintext
-Task summarize_topic_data_chunks raised:
-TypeError: unsupported operand type(s) for +: 'int' and 'str'
-Cause: `chunk_size` passed as a string instead of integer.
-Fix: Ensure chunk_size is cast or passed as an integer when used.
+Celery workers -> Reddit / YouTube providers
+          ↖
+        Redis broker / backend
 ```
 
----
+### Main components
 
-## 🧪 Running the App
+- `app/main.py` - FastAPI app exposing the GraphQL API.
+- `app/graphql_schema.py` - GraphQL schema for topics, subscriptions, updates, notifications, and auth.
+- `app/tasks.py` - Celery tasks for topic refresh and content collection.
+- `app/crawlers/` - Source providers for external content.
+- `app/db/mongodb.py` - MongoDB connection, collections, and indexes.
+- `app/services/` - Business logic for updates, notifications, and personalization.
+- `web/` - React + Apollo dashboard.
 
-### 1. Start MongoDB and Redis
+## Local setup
 
-### 2. Run Celery Worker
+### 1. Configure environment
+
+Copy `.env.example` to `.env` and fill in required values:
 
 ```bash
-celery -A app.tasks worker --loglevel=info
+cp .env.example .env
 ```
 
-### 3. Trigger Tasks
+Required values typically include:
 
-```python
-from app.tasks import fetch_topic_data, summarize_topic_data
-fetch_topic_data.delay("amazon SDE interview")
-summarize_topic_data.delay("amazon SDE interview")
+- `MONGODB_URI`
+- `REDIS_URL`
+- `JWT_SECRET`
+- `ALLOWED_ORIGINS`
+- `RAPIDAPI_KEY`
+- `REDDIT_CLIENT_ID`
+- `REDDIT_CLIENT_SECRET`
+
+### 2. Install Python dependencies
+
+```bash
+python -m pip install -r requirements.txt
 ```
 
----
+### 3. Start supporting services
 
-## 📌 Environment Variables Required
+Run MongoDB and Redis in Docker:
 
-* `OPENROUTER_API_KEY`
-* `RAPIDAPI_KEY`
+```bash
+docker compose up -d
+```
 
----
+### 4. Run the backend API
 
-## ⏭️ Next Steps
+```bash
+uvicorn app.main:app --reload
+```
 
-* [ ] Move YouTube summarization API call to `summarize_raw_data`
-* [ ] Add deduplication for fetched videos and posts
-* [ ] Expose summaries via REST API
-* [ ] Add user-specific topic registration and history
-* [ ] Add retry/fallback logic for failed summarizations
+### 5. Run a Celery worker
 
----
+In a second terminal:
 
-## 🧠 Tech Stack
+```bash
+celery -A app.tasks worker --loglevel=info --queues=collection
+```
 
-* Python 3.13
-* MongoDB
-* Redis
-* Celery
-* OpenAI API (via OpenRouter)
-* RapidAPI endpoints
+### 6. Run Celery Beat for scheduled jobs
 
----
+In a third terminal:
 
-*Last updated: May 24, 2025*
+```bash
+celery -A app.tasks beat --loglevel=info
+```
+
+### 7. Start the web client
+
+From the `web/` directory:
+
+```bash
+npm install
+npm run dev
+```
+
+Or use the convenience script from the project root:
+
+```bash
+./scripts/run-dev.sh
+```
+
+### 8. Access the app
+
+- GraphQL explorer: `http://localhost:8000/graphql`
+- Web dashboard: usually `http://localhost:5173`
+
+## GraphQL example
+
+Create a topic:
+
+```graphql
+mutation {
+  createTopic(name: "India AI regulation") {
+    id
+    name
+  }
+}
+```
+
+Then use the returned topic ID to call `subscribeToTopic`, query `subscriptions`, `topicUpdates`, and `notifications`, or refresh the topic.
+
+## Verification
+
+Run unit tests and compile checks:
+
+```bash
+pytest
+python -m compileall -q app
+```
+
+## Notes
+
+- Local development uses `X-User-ID` to simulate users.
+- Production requires a real authentication provider instead of the development identity header.
+- GraphQL subscriptions are implemented, but horizontal scaling should use Redis pub/sub or a distributed event bus for live update delivery.
+
+## Security
+
+- Keep secrets in `.env` or a managed secrets store.
+- Do not commit provider keys or JWT secrets.
+- Rotate any sensitive keys before sharing or deploying.
